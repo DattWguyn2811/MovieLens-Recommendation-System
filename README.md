@@ -114,10 +114,11 @@ MovieLens 1M Dataset
 
 ### Setup
 
-1. **Clone the repository** (or navigate to project directory):
+1. **Clone the repository**
 
 ```bash
-cd /path/to/Movie-Recommender-System
+git clone https://github.com/DattWguyn2811/MovieLens-Recommendation-System.git
+cd MovieLens-Recommendation-System
 ```
 
 2. **Create a virtual environment**:
