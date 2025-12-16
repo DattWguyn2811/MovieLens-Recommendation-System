@@ -5,7 +5,7 @@ Implements metrics for Top-N recommendation evaluation.
 
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Tuple, Set
+from typing import List, Dict, Tuple, Set, Optional
 from collections import defaultdict
 
 
@@ -275,6 +275,84 @@ def generate_recommendations_dict(
             recommendations[user_id] = []
     
     return recommendations
+
+
+def compute_rmse(
+    predictor,
+    test_df: pd.DataFrame,
+    max_users: Optional[int] = None
+) -> float:
+    """
+    Compute RMSE for a rating prediction model.
+
+    Args:
+        predictor: Object with method predict_rating(user_id, movie_id) -> float
+        test_df: Test set with columns [user_id, movie_id, rating]
+        max_users: Optional limit on number of users to evaluate (for speed)
+
+    Returns:
+        Root Mean Squared Error over the evaluated user-item pairs.
+    """
+    errors = []
+
+    user_ids = test_df["user_id"].unique()
+    if max_users is not None:
+        user_ids = user_ids[:max_users]
+
+    for user_id in user_ids:
+        user_rows = test_df[test_df["user_id"] == user_id]
+        for _, row in user_rows.iterrows():
+            try:
+                pred = predictor.predict_rating(
+                    int(row["user_id"]),
+                    int(row["movie_id"])
+                )
+                err = float(pred) - float(row["rating"])
+                errors.append(err * err)
+            except Exception:
+                # Skip pairs that cannot be scored
+                continue
+
+    return float(np.sqrt(np.mean(errors))) if errors else float("nan")
+
+
+def compute_mse(
+    predictor,
+    test_df: pd.DataFrame,
+    max_users: Optional[int] = None
+) -> float:
+    """
+    Compute MSE for a rating prediction model.
+
+    Args:
+        predictor: Object with method predict_rating(user_id, movie_id) -> float
+        test_df: Test set with columns [user_id, movie_id, rating]
+        max_users: Optional limit on number of users to evaluate (for speed)
+
+    Returns:
+        Mean Squared Error over the evaluated user-item pairs.
+    """
+    errors = []
+
+    user_ids = test_df["user_id"].unique()
+    if max_users is not None:
+        user_ids = user_ids[:max_users]
+
+    for user_id in user_ids:
+        user_rows = test_df[test_df["user_id"] == user_id]
+        for _, row in user_rows.iterrows():
+            try:
+                pred = predictor.predict_rating(
+                    int(row["user_id"]),
+                    int(row["movie_id"])
+                )
+                err = float(pred) - float(row["rating"])
+                errors.append(err * err)
+            except Exception:
+                # Skip pairs that cannot be scored
+                continue
+
+    return float(np.mean(errors)) if errors else float("nan")
 
 
 def evaluate_model(

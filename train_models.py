@@ -11,7 +11,7 @@ from src.data_preprocessing import MovieLensPreprocessor
 from src.item_based_recommender import ItemBasedRecommenderSystem
 from src.graph_recommender import GraphRecommenderSystem
 from src.mf_recommender import MFRecommenderSystem
-from src.evaluation import evaluate_model
+from src.evaluation import evaluate_model, compute_rmse, compute_mse
 
 
 def save_model(model, filename: str):
@@ -120,6 +120,12 @@ def main():
         top_n=20
     )
     all_results.append(results_mf)
+    
+    # Compute MSE / RMSE for Matrix Factorization on explicit ratings
+    mse_mf = compute_mse(mf_system.mf_model, data["test"])
+    rmse_mf = compute_rmse(mf_system.mf_model, data["test"])
+    print(f"\nMSE  (Matrix Factorization) on explicit ratings: {mse_mf:.4f}")
+    print(f"RMSE (Matrix Factorization) on explicit ratings: {rmse_mf:.4f}")
     
     # Step 4: Comparison
     print("\n" + "=" * 80)

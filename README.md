@@ -335,6 +335,20 @@ NDCG@K = DCG@K / IDCG@K
 ```
 Measures ranking quality with position discounting.
 
+#### 5. MSE (Mean Squared Error)
+```
+MSE = (1/|D|) Σ(ŷ - y)²
+```
+Measures average squared difference between predicted and actual ratings. Used for **rating prediction** tasks (explicit feedback).
+
+#### 6. RMSE (Root Mean Squared Error)
+```
+RMSE = √MSE = √[(1/|D|) Σ(ŷ - y)²]
+```
+Square root of MSE, providing error in the same units as ratings (1-5 scale). Lower values indicate better rating prediction accuracy.
+
+**Note**: MSE and RMSE are computed only for **Matrix Factorization** model, as it provides explicit rating predictions via `predict_rating()` method. Item-Based CF and Graph PPR generate Top-N recommendations but do not predict specific rating values.
+
 ### Evaluation Protocol
 
 1. **Train-Test Split**: 80/20 per user
@@ -353,13 +367,39 @@ python train_models.py
 
 Results are saved to `models/evaluation_results.csv`.
 
-### Expected Results
+### Experimental Results
 
-| Model | K | Precision@K | Recall@K | Hit Rate@K | NDCG@K |
-|-------|---|-------------|----------|------------|--------|
-| Item-Based CF | 10 | **0.224** | **0.156** | **0.778** | **0.277** |
-| Graph PPR | 10 | 0.157 | 0.101 | 0.643 | 0.190 |
-| Matrix Factorization | 10 | 0.172 | 0.109 | 0.680 | 0.210 |
+#### Top-N Recommendation Metrics
+
+**Results at K=5:**
+| Model | Precision@5 | Recall@5 | Hit Rate@5 | NDCG@5 |
+|-------|-------------|----------|------------|--------|
+| Item-Based CF | **0.2727** | **0.1007** | **0.6771** | **0.2981** |
+| Graph PPR | 0.1924 | 0.0649 | 0.5338 | 0.2069 |
+| Matrix Factorization | 0.2080 | 0.0689 | 0.5720 | 0.2282 |
+
+**Results at K=10:**
+| Model | Precision@10 | Recall@10 | Hit Rate@10 | NDCG@10 |
+|-------|--------------|------------|-------------|---------|
+| Item-Based CF | **0.2241** | **0.1560** | **0.7783** | **0.2767** |
+| Graph PPR | 0.1573 | 0.1006 | 0.6425 | 0.1901 |
+| Matrix Factorization | 0.1722 | 0.1090 | 0.6801 | 0.2096 |
+
+**Results at K=20:**
+| Model | Precision@20 | Recall@20 | Hit Rate@20 | NDCG@20 |
+|-------|--------------|------------|-------------|---------|
+| Item-Based CF | **0.1734** | **0.2275** | **0.8526** | **0.2692** |
+| Graph PPR | 0.1287 | 0.1620 | 0.7648 | 0.1894 |
+| Matrix Factorization | 0.1355 | 0.1628 | 0.7661 | 0.2023 |
+
+#### Rating Prediction Metrics (Matrix Factorization Only)
+
+| Metric | Value | Interpretation |
+|--------|-------|----------------|
+| **MSE** | 1.0483 | Average squared error of ~1.05 rating points² |
+| **RMSE** | 1.0239 | Average prediction error of ~1.02 stars (on 1-5 scale) |
+
+**Analysis**: RMSE of 1.02 indicates that MF predictions are, on average, within 1 star of actual ratings. This is reasonable given the 1-5 rating scale, though there is room for improvement. The error suggests the model captures general preferences but struggles with fine-grained rating distinctions.
 
 **Why Item-Based CF performs best:**
 - Dataset has strong co-occurrence patterns (50% movies >100 ratings)
@@ -444,31 +484,38 @@ Movie-Recommender-System/
 **Does Personalized PageRank outperform traditional baseline methods?**
 
 **Answer**:
-- Item-Based CF actually outperforms PPR by ~46% on NDCG@10 (0.277 vs 0.190)
+- Item-Based CF actually outperforms PPR by **31.3%** on NDCG@10 (0.2767 vs 0.1901)
 - **Key finding**: Graph structure adds complexity without benefit when dataset has strong direct co-occurrence patterns
-- PPR suffers from signal dilution across 800K+ edges
+- PPR suffers from signal dilution across 802K+ edges in the bipartite graph
 - Trade-off: Multi-hop discovery capability vs. direct similarity effectiveness
 - **Lesson**: Advanced methods don't always beat simpler approaches - dataset characteristics matter more than algorithm sophistication
+- PPR evaluation requires running PageRank 6,040 times (once per user), making it computationally expensive but methodologically sound
 
 ### RQ3: Matrix Factorization vs Direct Methods
 **Does Matrix Factorization achieve higher accuracy than direct similarity methods?**
 
 **Answer**:
-- MF underperforms Item-Based CF by ~24% on NDCG@10 (0.210 vs 0.277)
-- **Key finding**: Compression from 3680 items to 100 dimensions loses critical information
-- 95.6% parameter reduction causes information bottleneck
-- Item factor variance is very low (0.0002-0.0003) indicating weak differentiation
+- MF underperforms Item-Based CF by **24.2%** on NDCG@10 (0.2096 vs 0.2767)
+- **Key finding**: Compression from 3,680 items to 100 dimensions loses critical information
+- 97.3% parameter reduction (from 3,680 to 100 factors) causes information bottleneck
+- Singular values range [40.16, 224.53] indicates moderate signal strength but limited differentiation
+- **Rating Prediction Performance**: RMSE of 1.02 shows MF can predict ratings within ~1 star on average, demonstrating reasonable accuracy for explicit feedback tasks
 - **Lesson**: Dimensionality reduction helps when data is truly sparse, but MovieLens 1M has sufficient signal for direct methods
 - Trade-off: Compact representation vs. information preservation
+- **Dual Evaluation**: MF is evaluated on both Top-N recommendations (Precision/Recall/NDCG) and rating prediction (MSE/RMSE), providing comprehensive performance assessment
 
 ## 📊 Results
 
 ### Model Comparison Summary
 
 **Performance Rankings** (NDCG@10):
-1. **Item-Based CF**: 0.277 ⭐️ (Baseline is the winner!)
-2. **Matrix Factorization**: 0.210 (-24%)
-3. **Graph PPR**: 0.190 (-31%)
+1. **Item-Based CF**: 0.2767 ⭐️ (Baseline is the winner!)
+2. **Matrix Factorization**: 0.2096 (-24.2%)
+3. **Graph PPR**: 0.1901 (-31.3%)
+
+**Rating Prediction Performance** (Matrix Factorization):
+- **MSE**: 1.0483
+- **RMSE**: 1.0239 (average error ~1.02 stars on 1-5 scale)
 
 **Strengths**:
 - **Item-Based CF**: Direct similarity, no information loss, perfect for datasets with strong co-occurrence
@@ -484,13 +531,16 @@ Movie-Recommender-System/
 
 1. **Algorithm-Dataset Fit Matters Most**: Item-Based CF wins because dataset has strong co-occurrence patterns, not because other algorithms are poorly implemented
 2. **Simpler Can Be Better**: With 132.9 avg ratings/user and 50% movies having >100 ratings, direct similarity outperforms complex graph/latent methods
-3. **Information Preservation**: Item-Based uses full similarity matrix (no loss), while MF compresses to 4.4% (95.6% loss) and PPR dilutes signals across 800K edges
+3. **Information Preservation**: Item-Based uses full similarity matrix (no loss), while MF compresses to 2.7% (97.3% loss) and PPR dilutes signals across 802K edges
 4. **Cold Start**: All three models support cold-start; Item-Based and PPR are more interpretable
-5. **Computational Cost**: Item-Based < MF < PPR (inference time), but Item-Based requires more memory for similarity cache
-6. **Trade-offs**:
+5. **Computational Cost**: Item-Based < MF < PPR (inference time), but Item-Based requires more memory for similarity cache. PPR evaluation is slowest (6,040 PageRank runs) but methodologically rigorous
+6. **Dual Evaluation Paradigm**: MF uniquely supports both Top-N ranking (Precision/Recall/NDCG) and rating prediction (MSE/RMSE), providing comprehensive assessment
+7. **Rating Prediction Quality**: MF achieves RMSE of 1.02, meaning predictions are within ~1 star on average - reasonable but with room for improvement
+8. **Trade-offs**:
    - **Accuracy vs Complexity**: Item-Based proves simpler methods can win
    - **Memory vs Computation**: Item-Based trades memory (similarity cache) for speed
    - **Interpretability vs Sophistication**: Direct similarity more explainable than latent factors
+   - **Top-N vs Rating Prediction**: Different models excel at different tasks (Item-Based for ranking, MF for prediction)
 
 ## 🚀 Future Work
 
